@@ -16,7 +16,7 @@ const BadParamsError = errors.BadParamsError
 const BadCredentialsError = errors.BadCredentialsError
 
 const User = require('../models/user')
-
+const Board = require('../models/board')
 // passing this as a second argument to `router.<verb>` will make it
 // so that a token MUST be passed for that route to be available
 // it will also set `res.user`
@@ -33,9 +33,11 @@ router.post('/sign-up', (req, res, next) => {
     // reject any requests where `credentials.password` is not present, or where
     // the password is an empty string
     .then(credentials => {
-      if (!credentials ||
-          !credentials.password ||
-          credentials.password !== credentials.password_confirmation) {
+      if (
+        !credentials ||
+        !credentials.password ||
+        credentials.password !== credentials.password_confirmation
+      ) {
         throw new BadParamsError()
       }
     })
@@ -49,7 +51,9 @@ router.post('/sign-up', (req, res, next) => {
       }
     })
     // create user with provided email and hashed password
-    .then(user => User.create(user))
+    .then(user => {
+      User.create(user).then(createdUser => Board.create({ owner: createdUser._id }))
+    })
     // send the new user object back with status 201, but `hashedPassword`
     // won't be send because of the `transform` in the User model
     .then(user => res.status(201).json({ user: user.toObject() }))
@@ -104,7 +108,9 @@ router.patch('/change-password', requireToken, (req, res, next) => {
   // `req.user` will be determined by decoding the token payload
   User.findById(req.user.id)
     // save user outside the promise chain
-    .then(record => { user = record })
+    .then(record => {
+      user = record
+    })
     // check that the old password is correct
     .then(() => bcrypt.compare(req.body.passwords.old, user.hashedPassword))
     // `correctPassword` will be true if hashing the old password ends up the
@@ -133,7 +139,8 @@ router.delete('/sign-out', requireToken, (req, res, next) => {
   // create a new random token for the user, invalidating the current one
   req.user.token = null
   // save the token and respond with 204
-  req.user.save()
+  req.user
+    .save()
     .then(() => res.sendStatus(204))
     .catch(next)
 })

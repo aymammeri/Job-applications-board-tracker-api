@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 // eslint-disable-next-line no-unused-vars
-const User = require('./user ')
+const User = require('./user')
 // eslint-disable-next-line no-unused-vars
 const Column = require('./columns')
 
