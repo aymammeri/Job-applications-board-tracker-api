@@ -5,8 +5,8 @@ const passport = require('passport')
 
 // pull in Mongoose model for examples
 const Board = require('../models/board')
-const Column = require('../models/columns')
-const Cell = require('../models/cells')
+const Column = require('../models/column')
+const Cell = require('../models/cell')
 // this is a collection of methods that help us detect situations when we need
 // to throw a custom error
 const customErrors = require('../../lib/custom_errors')
@@ -28,32 +28,41 @@ const requireToken = passport.authenticate('bearer', { session: false })
 // instantiate a router (mini app that only handles routes)
 const router = express.Router()
 
-// INDEX
-// GET /examples
 router.get('/board', requireToken, (req, res, next) => {
-  Board.find()
-    .then(examples => {
-      // `examples` will be an array of Mongoose documents
-      // we want to convert each one to a POJO, so we use `.map` to
-      // apply `.toObject` to each one
-      return examples.map(example => example.toObject())
+  Board.findOne({ owner: req.user.id })
+    .populate({
+      path: 'columns',
+      populate: { path: 'cells', model: 'Cell' }
     })
-    // respond with status 200 and JSON of the examples
-    .then(examples => res.status(200).json({ examples: examples }))
+    .then(doc => {
+      // return status 201, the email, and the new token
+      res.status(201).json({ board: doc })
+    })
+})
+
+// SHOW
+router.get('/column/:id', requireToken, (req, res, next) => {
+  // req.params.id will be set based on the `:id` in the route
+  Column.findById(req.params.id)
+    .populate({ path: 'cells' })
+    .then(handle404)
+    // if `findById` is successful, respond with 200 and cell JSON
+    .then(cell => res.status(200).json({ column: cell.toObject() }))
     // if an error occurs, pass it to the handler
     .catch(next)
 })
 
 // CREATE
-// POST /examples
 router.post('/column', requireToken, removeBlanks, (req, res, next) => {
-  // set owner of new example to be current user
-  req.body.example.owner = req.user.id
-
-  Column.create(req.body.example)
-    // respond to succesful `create` with status 201 and JSON of new "example"
-    .then(example => {
-      res.status(201).json({ example: example.toObject() })
+  req.body.column.owner = req.user.id
+  Column.create(req.body.column)
+    // respond to successful `create` with status 201 and JSON of new column
+    .then(column => {
+      Board.findById(req.body.column.board).then(board => {
+        board.columns.push(column)
+        board.save()
+      })
+      res.status(201).json({ column: column.toObject() })
     })
     // if an error occurs, pass it off to our error handler
     // the error handler needs the error message and the `res` object so that it
@@ -62,21 +71,19 @@ router.post('/column', requireToken, removeBlanks, (req, res, next) => {
 })
 
 // UPDATE
-// PATCH /examples/5a7db6c74d55bc51bdf39793
 router.patch('/column/:id', requireToken, removeBlanks, (req, res, next) => {
   // if the client attempts to change the `owner` property by including a new
   // owner, prevent that by deleting that key/value pair
-  delete req.body.example.owner
-
+  delete req.body.column.owner
   Column.findById(req.params.id)
     .then(handle404)
-    .then(example => {
+    .then(column => {
       // pass the `req` object and the Mongoose record to `requireOwnership`
       // it will throw an error if the current user isn't the owner
-      requireOwnership(req, example)
+      requireOwnership(req, column)
 
       // pass the result of Mongoose's `.update` to the next `.then`
-      return example.updateOne(req.body.example)
+      return column.updateOne(req.body.column)
     })
     // if that succeeded, return 204 and no JSON
     .then(() => res.sendStatus(204))
@@ -85,15 +92,14 @@ router.patch('/column/:id', requireToken, removeBlanks, (req, res, next) => {
 })
 
 // DESTROY
-// DELETE /examples/5a7db6c74d55bc51bdf39793
 router.delete('/column/:id', requireToken, (req, res, next) => {
   Column.findById(req.params.id)
     .then(handle404)
-    .then(example => {
-      // throw an error if current user doesn't own `example`
-      requireOwnership(req, example)
+    .then(column => {
+      // throw an error if current user doesn't own column
+      requireOwnership(req, column)
       // delete the example ONLY IF the above didn't throw
-      example.deleteOne()
+      column.deleteOne()
     })
     // send back 204 and no content if the deletion succeeded
     .then(() => res.sendStatus(204))
@@ -102,27 +108,27 @@ router.delete('/column/:id', requireToken, (req, res, next) => {
 })
 
 // SHOW
-// GET /examples/5a7db6c74d55bc51bdf39793
 router.get('/cell/:id', requireToken, (req, res, next) => {
   // req.params.id will be set based on the `:id` in the route
   Cell.findById(req.params.id)
     .then(handle404)
-    // if `findById` is succesful, respond with 200 and "example" JSON
-    .then(example => res.status(200).json({ example: example.toObject() }))
+    // if `findById` is successful, respond with 200 and cell JSON
+    .then(cell => res.status(200).json({ cell: cell.toObject() }))
     // if an error occurs, pass it to the handler
     .catch(next)
 })
 
 // CREATE
-// POST /examples
 router.post('/cell', requireToken, removeBlanks, (req, res, next) => {
-  // set owner of new example to be current user
-  req.body.example.owner = req.user.id
-
-  Cell.create(req.body.example)
-    // respond to succesful `create` with status 201 and JSON of new "example"
-    .then(example => {
-      res.status(201).json({ example: example.toObject() })
+  req.body.cell.owner = req.user.id
+  Cell.create(req.body.cell)
+    // respond to successful `create` with status 201 and JSON of new cell
+    .then(cell => {
+      Column.findById(req.body.cell.column).then(column => {
+        column.cells.push(cell)
+        column.save()
+      })
+      res.status(201).json(cell)
     })
     // if an error occurs, pass it off to our error handler
     // the error handler needs the error message and the `res` object so that it
@@ -131,21 +137,19 @@ router.post('/cell', requireToken, removeBlanks, (req, res, next) => {
 })
 
 // UPDATE
-// PATCH /examples/5a7db6c74d55bc51bdf39793
 router.patch('/cell/:id', requireToken, removeBlanks, (req, res, next) => {
   // if the client attempts to change the `owner` property by including a new
   // owner, prevent that by deleting that key/value pair
-  delete req.body.example.owner
-
+  delete req.body.cell.owner
   Cell.findById(req.params.id)
     .then(handle404)
-    .then(example => {
+    .then(cell => {
       // pass the `req` object and the Mongoose record to `requireOwnership`
       // it will throw an error if the current user isn't the owner
-      requireOwnership(req, example)
+      requireOwnership(req, cell)
 
       // pass the result of Mongoose's `.update` to the next `.then`
-      return example.updateOne(req.body.example)
+      return cell.updateOne(req.body.cell)
     })
     // if that succeeded, return 204 and no JSON
     .then(() => res.sendStatus(204))
@@ -154,15 +158,14 @@ router.patch('/cell/:id', requireToken, removeBlanks, (req, res, next) => {
 })
 
 // DESTROY
-// DELETE /examples/5a7db6c74d55bc51bdf39793
 router.delete('/cell/:id', requireToken, (req, res, next) => {
   Cell.findById(req.params.id)
     .then(handle404)
-    .then(example => {
+    .then(cell => {
       // throw an error if current user doesn't own `example`
-      requireOwnership(req, example)
+      requireOwnership(req, cell)
       // delete the example ONLY IF the above didn't throw
-      example.deleteOne()
+      cell.deleteOne()
     })
     // send back 204 and no content if the deletion succeeded
     .then(() => res.sendStatus(204))
