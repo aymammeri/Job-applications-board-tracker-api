@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 // eslint-disable-next-line no-unused-vars
+const User = require('./user')
 
 const cellSchema = new mongoose.Schema(
   {
@@ -18,7 +19,13 @@ const cellSchema = new mongoose.Schema(
     ContactName: String,
     ContactTitle: String,
     ContactEmail: String,
-    description: String
+    Note: String,
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      immutable: true
+    }
   },
   {
     timestamps: true

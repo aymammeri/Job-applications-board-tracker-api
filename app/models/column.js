@@ -1,6 +1,8 @@
 const mongoose = require('mongoose')
 // eslint-disable-next-line no-unused-vars
-const Cell = require('./cells')
+const User = require('./user')
+// eslint-disable-next-line no-unused-vars
+const Cell = require('./cell')
 
 const columnSchema = new mongoose.Schema(
   {
@@ -14,7 +16,13 @@ const columnSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Cell'
       }
-    ]
+    ],
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      immutable: true
+    }
   },
   {
     timestamps: true
