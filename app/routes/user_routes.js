@@ -14,9 +14,11 @@ const errors = require('../../lib/custom_errors')
 
 const BadParamsError = errors.BadParamsError
 const BadCredentialsError = errors.BadCredentialsError
+const EmailAlreadyExist = errors.EmailAlreadyExist
 
 const User = require('../models/user')
 const Board = require('../models/board')
+const columns = require('../models/column')
 // passing this as a second argument to `router.<verb>` will make it
 // so that a token MUST be passed for that route to be available
 // it will also set `res.user`
@@ -27,9 +29,18 @@ const router = express.Router()
 
 // SIGN UP
 // POST /sign-up
-router.post('/sign-up', (req, res, next) => {
-  // start a promise chain, so that any errors will pass to `handle`
+router.post('/sign-up', async (req, res, next) => {
+  // check if user exist
+  try {
+    const findUser = await User.find({ email: req.body.credentials.email })
+    if (findUser.length) {
+      throw new EmailAlreadyExist()
+    }
+  } catch (error) {
+    return res.status(409).json({ error })
+  }
   Promise.resolve(req.body.credentials)
+    // start a promise chain, so that any errors will pass to `handle`
     // reject any requests where `credentials.password` is not present, or where
     // the password is an empty string
     .then(credentials => {
@@ -39,6 +50,8 @@ router.post('/sign-up', (req, res, next) => {
         credentials.password !== credentials.password_confirmation
       ) {
         throw new BadParamsError()
+      } else {
+        return credentials
       }
     })
     // generate a hash from the provided password, returning a promise
@@ -52,11 +65,21 @@ router.post('/sign-up', (req, res, next) => {
     })
     // create user with provided email and hashed password
     .then(user => {
-      User.create(user).then(createdUser => Board.create({ owner: createdUser._id }))
+      User.create(user).then(createdUser =>
+        Board.create({ owner: createdUser._id }).then(async doc => {
+          const wish = await columns.create({ title: 'Whish List', owner: createdUser._id, color: 'orange', board: doc._id })
+          const applied = await columns.create({ title: 'Applied', owner: createdUser._id, color: 'Yellow', board: doc._id })
+          const phoneScreen = await columns.create({ title: 'Phone Screen', owner: createdUser._id, color: 'Green', board: doc._id })
+          const interview = await columns.create({ title: 'Interview', owner: createdUser._id, color: 'Blue', board: doc._id })
+          const offer = await columns.create({ title: 'Offer', owner: createdUser._id, color: 'Purple', board: doc._id })
+          doc.columns.push(wish, applied, phoneScreen, interview, offer)
+          doc.save()
+        })
+      )
     })
     // send the new user object back with status 201, but `hashedPassword`
     // won't be send because of the `transform` in the User model
-    .then(user => res.status(201).json({ user: user.toObject() }))
+    .then(res.sendStatus(201))
     // pass any errors along to the error handler
     .catch(next)
 })
@@ -66,7 +89,7 @@ router.post('/sign-up', (req, res, next) => {
 router.post('/sign-in', (req, res, next) => {
   const pw = req.body.credentials.password
   let user
-
+  let board
   // find a user based on the email that was passed
   User.findOne({ email: req.body.credentials.email })
     .then(record => {
@@ -95,8 +118,17 @@ router.post('/sign-in', (req, res, next) => {
       }
     })
     .then(user => {
-      // return status 201, the email, and the new token
-      res.status(201).json({ user: user.toObject() })
+      // GET index board and populate everything in board
+      Board.find({ owner: user._id })
+        .populate({
+          path: 'columns',
+          populate: { path: 'cells', model: 'Cell' }
+        })
+        .then(doc => {
+          board = doc
+          // return status 201, the email, and the new token
+          res.status(201).json({ user: user.toObject(), board: board })
+        })
     })
     .catch(next)
 })
