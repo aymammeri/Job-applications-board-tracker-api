@@ -2,18 +2,22 @@ const mongoose = require('mongoose')
 // eslint-disable-next-line no-unused-vars
 const User = require('./user')
 // eslint-disable-next-line no-unused-vars
-const Column = require('./columns')
+const Column = require('./column')
 
 const boardSchema = new mongoose.Schema(
   {
+    columns: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Column'
+      }
+    ],
     owner: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    columns: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Column'
-    }]
+      ref: 'User',
+      required: true,
+      immutable: true
+    }
   },
   {
     timestamps: true
