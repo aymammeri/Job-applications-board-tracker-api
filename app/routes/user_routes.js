@@ -119,7 +119,7 @@ router.post('/sign-in', (req, res, next) => {
     })
     .then(user => {
       // GET index board and populate everything in board
-      Board.find({ owner: user._id })
+      Board.findOne({ owner: user._id })
         .populate({
           path: 'columns',
           populate: { path: 'cells', model: 'Cell' }
@@ -127,7 +127,7 @@ router.post('/sign-in', (req, res, next) => {
         .then(doc => {
           board = doc
           // return status 201, the email, and the new token
-          res.status(201).json({ user: user.toObject(), board: board })
+          res.status(201).json({ user: user.toObject(), board })
         })
     })
     .catch(next)
