@@ -6,7 +6,7 @@ const Cell = require('./cell')
 
 const columnSchema = new mongoose.Schema(
   {
-    title: {
+    name: {
       type: String,
       required: true
     },
@@ -20,7 +20,6 @@ const columnSchema = new mongoose.Schema(
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
       immutable: true
     }
   },

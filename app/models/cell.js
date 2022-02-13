@@ -16,14 +16,14 @@ const cellSchema = new mongoose.Schema(
       type: String,
       required: true
     },
-    ContactName: String,
-    ContactTitle: String,
-    ContactEmail: String,
-    Note: String,
+    contactName: String,
+    contactTitle: String,
+    contactEmail: String,
+    color: String,
+    description: String,
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
       immutable: true
     }
   },
