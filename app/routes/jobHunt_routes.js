@@ -28,149 +28,171 @@ const requireToken = passport.authenticate('bearer', { session: false })
 // instantiate a router (mini app that only handles routes)
 const router = express.Router()
 
-router.get('/board', requireToken, (req, res, next) => {
-  Board.findOne({ owner: req.user.id })
-    .populate({
+router.get('/board', requireToken, async (req, res, next) => {
+  try {
+    const board = await Board.findOne({ owner: req.user.id }).then(handle404)
+    await board.populate({
       path: 'columns',
       populate: { path: 'cells', model: 'Cell' }
     })
-    .then(doc => {
-      // return status 201, the email, and the new token
-      res.status(201).json({ board: doc })
-    })
+    // return status 201, the email, and the new token
+    res.status(201).json({ board })
+  } catch (error) {
+    next(error)
+  }
 })
 
 // SHOW
-router.get('/column/:id', requireToken, (req, res, next) => {
-  // req.params.id will be set based on the `:id` in the route
-  Column.findById(req.params.id)
-    .populate({ path: 'cells' })
-    .then(handle404)
+router.get('/column/:id', requireToken, async (req, res, next) => {
+  try {
+    // req.params.id will be set based on the `:id` in the route
+    const column = await Column.findById(req.params.id).then(handle404)
+    await column.populate({ path: 'cells' })
     // if `findById` is successful, respond with 200 and cell JSON
-    .then(cell => res.status(200).json({ column: cell.toObject() }))
+    res.status(200).json({ column: column.toObject() })
     // if an error occurs, pass it to the handler
-    .catch(next)
+  } catch (error) {
+    next(error)
+  }
 })
 
 // CREATE
-router.post('/column', requireToken, removeBlanks, (req, res, next) => {
-  req.body.column.owner = req.user.id
-  Column.create(req.body.column)
-    // respond to successful `create` with status 201 and JSON of new column
-    .then(column => {
-      Board.findById(req.body.column.board).then(board => {
-        board.columns.push(column)
-        board.save()
-      })
+router.post('/column', requireToken, removeBlanks, async (req, res, next) => {
+  try {
+    const board = await Board.findById(req.body.column.board).then(handle404)
+    if (board) {
+      requireOwnership(req, board)
+      const column = await Column.create(req.body.column)
+      // respond to successful `create` with status 201 and JSON of new column
+      await board.columns.push(column)
+      await board.save()
       res.status(201).json({ column: column.toObject() })
-    })
+    }
+  } catch (error) {
     // if an error occurs, pass it off to our error handler
     // the error handler needs the error message and the `res` object so that it
     // can send an error message back to the client
-    .catch(next)
+    next(error)
+  }
 })
 
 // UPDATE
-router.patch('/column/:id', requireToken, removeBlanks, (req, res, next) => {
-  // if the client attempts to change the `owner` property by including a new
-  // owner, prevent that by deleting that key/value pair
-  delete req.body.column.owner
-  Column.findById(req.params.id)
-    .then(handle404)
-    .then(column => {
+router.patch(
+  '/column/:id',
+  requireToken,
+  removeBlanks,
+  async (req, res, next) => {
+    try {
+      // if the client attempts to change the `owner` property by including a new
+      // owner, prevent that by deleting that key/value pair
+      delete req.body.column.owner
+      const column = await Column.findById(req.params.id).then(handle404)
       // pass the `req` object and the Mongoose record to `requireOwnership`
       // it will throw an error if the current user isn't the owner
       requireOwnership(req, column)
 
       // pass the result of Mongoose's `.update` to the next `.then`
-      return column.updateOne(req.body.column)
-    })
-    // if that succeeded, return 204 and no JSON
-    .then(() => res.sendStatus(204))
-    // if an error occurs, pass it to the handler
-    .catch(next)
-})
+      await column.updateOne(req.body.column)
+
+      // if that succeeded, return 204 and no JSON
+      res.sendStatus(204)
+    } catch (error) {
+      // if an error occurs, pass it to the handler
+
+      next(error)
+    }
+  }
+)
 
 // DESTROY
-router.delete('/column/:id', requireToken, (req, res, next) => {
-  Column.findById(req.params.id)
-    .then(handle404)
-    .then(column => {
-      // throw an error if current user doesn't own column
-      requireOwnership(req, column)
-      // delete the example ONLY IF the above didn't throw
-      column.deleteOne()
-    })
+router.delete('/column/:id', requireToken, async (req, res, next) => {
+  try {
+    const column = await Column.findById(req.params.id).then(handle404)
+    // throw an error if current user doesn't own column
+    requireOwnership(req, column)
+    // delete the example ONLY IF the above didn't throw
+    await column.deleteOne()
     // send back 204 and no content if the deletion succeeded
-    .then(() => res.sendStatus(204))
+    res.sendStatus(204)
+  } catch (error) {
     // if an error occurs, pass it to the handler
-    .catch(next)
+    next(error)
+  }
 })
 
 // SHOW
-router.get('/cell/:id', requireToken, (req, res, next) => {
-  // req.params.id will be set based on the `:id` in the route
-  Cell.findById(req.params.id)
-    .then(handle404)
+router.get('/cell/:id', requireToken, async (req, res, next) => {
+  try {
+    // req.params.id will be set based on the `:id` in the route
+    const cell = await Cell.findById(req.params.id).then(handle404)
     // if `findById` is successful, respond with 200 and cell JSON
-    .then(cell => res.status(200).json({ cell: cell.toObject() }))
+    res.status(200).json({ cell: cell.toObject() })
+  } catch (error) {
     // if an error occurs, pass it to the handler
-    .catch(next)
+    next(error)
+  }
 })
 
 // CREATE
-router.post('/cell', requireToken, removeBlanks, (req, res, next) => {
-  req.body.cell.owner = req.user.id
-  Cell.create(req.body.cell)
-    // respond to successful `create` with status 201 and JSON of new cell
-    .then(cell => {
-      Column.findById(req.body.cell.column).then(column => {
-        column.cells.push(cell)
-        column.save()
-      })
+router.post('/cell', requireToken, removeBlanks, async (req, res, next) => {
+  try {
+    const column = await Column.findById(req.body.cell.column).then(handle404)
+    if (column) {
+      requireOwnership(req, column)
+      const cell = await Cell.create(req.body.cell)
+      column.cells.push(cell)
+      column.save()
+      // respond to successful `create` with status 201 and JSON of new cell
       res.status(201).json(cell)
-    })
+    }
+  } catch (error) {
     // if an error occurs, pass it off to our error handler
     // the error handler needs the error message and the `res` object so that it
     // can send an error message back to the client
-    .catch(next)
+    next(error)
+  }
 })
 
 // UPDATE
-router.patch('/cell/:id', requireToken, removeBlanks, (req, res, next) => {
-  // if the client attempts to change the `owner` property by including a new
-  // owner, prevent that by deleting that key/value pair
-  delete req.body.cell.owner
-  Cell.findById(req.params.id)
-    .then(handle404)
-    .then(cell => {
+router.patch(
+  '/cell/:id',
+  requireToken,
+  removeBlanks,
+  async (req, res, next) => {
+    try {
+      // if the client attempts to change the `owner` property by including a new
+      // owner, prevent that by deleting that key/value pair
+      delete req.body.cell.owner
+      const cell = await Cell.findById(req.params.id).then(handle404)
       // pass the `req` object and the Mongoose record to `requireOwnership`
       // it will throw an error if the current user isn't the owner
       requireOwnership(req, cell)
 
       // pass the result of Mongoose's `.update` to the next `.then`
-      return cell.updateOne(req.body.cell)
-    })
-    // if that succeeded, return 204 and no JSON
-    .then(() => res.sendStatus(204))
-    // if an error occurs, pass it to the handler
-    .catch(next)
-})
+      await cell.updateOne(req.body.cell)
+      // if that succeeded, return 204 and no JSON
+      res.sendStatus(204)
+    } catch (error) {
+      // if an error occurs, pass it to the handler
+      next(error)
+    }
+  }
+)
 
 // DESTROY
-router.delete('/cell/:id', requireToken, (req, res, next) => {
-  Cell.findById(req.params.id)
-    .then(handle404)
-    .then(cell => {
-      // throw an error if current user doesn't own `example`
-      requireOwnership(req, cell)
-      // delete the example ONLY IF the above didn't throw
-      cell.deleteOne()
-    })
+router.delete('/cell/:id', requireToken, async (req, res, next) => {
+  try {
+    const cell = await Cell.findById(req.params.id).then(handle404)
+    // throw an error if current user doesn't own `example`
+    requireOwnership(req, cell)
+    // delete the example ONLY IF the above didn't throw
+    cell.deleteOne()
     // send back 204 and no content if the deletion succeeded
-    .then(() => res.sendStatus(204))
+    res.sendStatus(204)
+  } catch (error) {
     // if an error occurs, pass it to the handler
-    .catch(next)
+    next(error)
+  }
 })
 
 module.exports = router
