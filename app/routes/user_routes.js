@@ -67,11 +67,11 @@ router.post('/sign-up', async (req, res, next) => {
     .then(user => {
       User.create(user).then(createdUser =>
         Board.create({ owner: createdUser._id }).then(async doc => {
-          const wish = await columns.create({ title: 'Whish List', owner: createdUser._id, color: 'orange', board: doc._id })
-          const applied = await columns.create({ title: 'Applied', owner: createdUser._id, color: 'Yellow', board: doc._id })
-          const phoneScreen = await columns.create({ title: 'Phone Screen', owner: createdUser._id, color: 'Green', board: doc._id })
-          const interview = await columns.create({ title: 'Interview', owner: createdUser._id, color: 'Blue', board: doc._id })
-          const offer = await columns.create({ title: 'Offer', owner: createdUser._id, color: 'Purple', board: doc._id })
+          const wish = await columns.create({ name: 'Whish List', owner: createdUser._id, color: 'orange', board: doc._id })
+          const applied = await columns.create({ name: 'Applied', owner: createdUser._id, color: 'Yellow', board: doc._id })
+          const phoneScreen = await columns.create({ name: 'Phone Screen', owner: createdUser._id, color: 'Green', board: doc._id })
+          const interview = await columns.create({ name: 'Interview', owner: createdUser._id, color: 'Blue', board: doc._id })
+          const offer = await columns.create({ name: 'Offer', owner: createdUser._id, color: 'Purple', board: doc._id })
           doc.columns.push(wish, applied, phoneScreen, interview, offer)
           doc.save()
         })
