@@ -5,7 +5,7 @@ This application helps you keep your job hunt organize and easy to keep track of
 
 - App Screenshot:
 
-![Job-Board-Tracker-Screenshot](https://imgur.com/gallery/eVaxm55)
+![Job-Board-Tracker-Screenshot](https://user-images.githubusercontent.com/47344044/153897086-d2a8bf10-b95b-4da4-b065-31594da9d000.png)
 
 ## How to Use:
 ==============
@@ -26,7 +26,7 @@ This application is a web app it requires an always running server to work. fell
 ## Links:
 =========
 
-- Back-end repo [Link](https://github.com/aymammeri/job-applications-board-tracker-api).
+- Front-end repo [Link](https://github.com/aymammeri/job-applications-board-tracker).
 
 - Api Deployment [Link](https://thawing-anchorage-80200.herokuapp.com).
 
