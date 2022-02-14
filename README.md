@@ -51,6 +51,23 @@ This application is a web app it requires an always running server to work. fell
 
 - Refactor the code base to use React Redux/toolkit.
 
+### User Stories:
+=================
+
+- As an unregistered user, I would like to sign up with email and password.
+- As a registered user, I would like to sign in with email and password.
+- As a signed in user, I would like to change password.
+- As a signed in user, I would like to sign out.
+- As a signed in user, I would like to see all my board items but not
+  other users'.
+- As a signed in user, I would like to create a column item with a name.
+- As a signed in user, I would like to update my column item's title and.
+- As a signed in user, I would like to delete my column item.
+- As a signed in user, I would like to create a cell item with company name, position, location... 
+- As a signed in user, I would like to update my cell item's details.
+- As a signed in user, I would like to delete my cell item.
+- As a signed in user, I would like to move/reorder columns and cells by drag and dropping.
+
 ## Wire-frames & ERD:
 =====================
 
