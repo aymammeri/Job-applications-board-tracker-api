@@ -106,7 +106,6 @@ router.patch(
     try {
       // if the client attempts to change the `owner` property by including a new
       // owner, prevent that by deleting that key/value pair
-      delete req.body.cell.owner
       const cell = await Cell.findById(req.params.id).then(handle404)
       // pass the `req` object and the Mongoose record to `requireOwnership`
       // it will throw an error if the current user isn't the owner
@@ -184,9 +183,9 @@ router.get('/cell/:id', requireToken, async (req, res, next) => {
 
 router.get('/board', requireToken, async (req, res, next) => {
   try {
-    const board = await Board.findOne({ owner: req.user.id }).then(handle404)
-    await board.populate({
+    const board = await Board.findOne({ owner: req.user.id }).populate({
       path: 'columns',
+      model: 'Column',
       populate: { path: 'cells', model: 'Cell' }
     })
     // return status 201, the email, and the new token
