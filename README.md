@@ -26,7 +26,7 @@ This application is a web app it requires an always running server to work. fell
 ## Links:
 =========
 
-- Front-end repo [Link](https://github.com/aymammeri/job-applications-board-tracker).
+- Front-end repo [Link](https://github.com/aymammeri/job-applications-board-tacker).
 
 - Api Deployment [Link](https://thawing-anchorage-80200.herokuapp.com).
 
