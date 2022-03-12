@@ -70,7 +70,40 @@ router.post('/cell', requireToken, removeBlanks, async (req, res, next) => {
   }
 })
 
-// UPDATE
+// READ BOARD
+router.get('/board', requireToken, async (req, res, next) => {
+  try {
+    const board = await Board.findOne({ owner: req.user.id }).populate({
+      path: 'columns',
+      model: 'Column',
+      populate: { path: 'cells', model: 'Cell' }
+    })
+    // return status 201, the email, and the new token
+    res.status(201).json({ board })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// UPDATE COLUMNS ORDER
+router.put('/column/', requireToken, removeBlanks, async (req, res, next) => {
+  try {
+    const srcCol = await Column.findOne({ owner: req.user.id, _id: req.body.source.droppableId })
+    const [removed] = srcCol.cells.splice(req.body.source.index, 1)
+    await srcCol.save()
+    const desCol = await Column.findOne({ owner: req.user.id, _id: req.body.destination.droppableId })
+    desCol.cells.splice(req.body.destination.index, 0, removed)
+    await desCol.save()
+    // if that succeeded, return 204 and no JSON
+    res.status(204)
+  } catch (error) {
+    // if an error occurs, pass it to the handler
+
+    next(error)
+  }
+})
+
+// UPDATE COLUMN
 router.patch(
   '/column/:id',
   requireToken,
@@ -97,7 +130,7 @@ router.patch(
   }
 )
 
-// UPDATE
+// UPDATE CELL
 router.patch(
   '/cell/:id',
   requireToken,
@@ -122,7 +155,7 @@ router.patch(
   }
 )
 
-// DESTROY
+// DELETE COLUMN
 router.delete('/column/:id', requireToken, async (req, res, next) => {
   try {
     const column = await Column.findById(req.params.id).then(handle404)
@@ -138,7 +171,7 @@ router.delete('/column/:id', requireToken, async (req, res, next) => {
   }
 })
 
-// DESTROY
+// DELETE CELL
 router.delete('/cell/:id', requireToken, async (req, res, next) => {
   try {
     const cell = await Cell.findById(req.params.id).then(handle404)
@@ -150,47 +183,6 @@ router.delete('/cell/:id', requireToken, async (req, res, next) => {
     res.sendStatus(204)
   } catch (error) {
     // if an error occurs, pass it to the handler
-    next(error)
-  }
-})
-
-// SHOW
-router.get('/column/:id', requireToken, async (req, res, next) => {
-  try {
-    // req.params.id will be set based on the `:id` in the route
-    const column = await Column.findById(req.params.id).then(handle404)
-    await column.populate({ path: 'cells' })
-    // if `findById` is successful, respond with 200 and cell JSON
-    res.status(200).json({ column: column.toObject() })
-    // if an error occurs, pass it to the handler
-  } catch (error) {
-    next(error)
-  }
-})
-
-// SHOW
-router.get('/cell/:id', requireToken, async (req, res, next) => {
-  try {
-    // req.params.id will be set based on the `:id` in the route
-    const cell = await Cell.findById(req.params.id).then(handle404)
-    // if `findById` is successful, respond with 200 and cell JSON
-    res.status(200).json({ cell: cell.toObject() })
-  } catch (error) {
-    // if an error occurs, pass it to the handler
-    next(error)
-  }
-})
-
-router.get('/board', requireToken, async (req, res, next) => {
-  try {
-    const board = await Board.findOne({ owner: req.user.id }).populate({
-      path: 'columns',
-      model: 'Column',
-      populate: { path: 'cells', model: 'Cell' }
-    })
-    // return status 201, the email, and the new token
-    res.status(201).json({ board })
-  } catch (error) {
     next(error)
   }
 })
