@@ -79,13 +79,13 @@ router.get('/board', requireToken, async (req, res, next) => {
       populate: { path: 'cells', model: 'Cell' }
     })
     // return status 201, the email, and the new token
-    res.status(201).json({ board })
+    res.status(200).json({ board })
   } catch (error) {
     next(error)
   }
 })
 
-// UPDATE COLUMNS ORDER
+// UPDATE REORDER
 router.put('/column/', requireToken, removeBlanks, async (req, res, next) => {
   try {
     const srcCol = await Column.findOne({ owner: req.user.id, _id: req.body.source.droppableId })
@@ -95,7 +95,7 @@ router.put('/column/', requireToken, removeBlanks, async (req, res, next) => {
     desCol.cells.splice(req.body.destination.index, 0, removed)
     await desCol.save()
     // if that succeeded, return 204 and no JSON
-    res.status(204)
+    res.sendStatus(200)
   } catch (error) {
     // if an error occurs, pass it to the handler
 
@@ -121,7 +121,7 @@ router.patch(
       await column.updateOne(req.body.form)
 
       // if that succeeded, return 204 and no JSON
-      res.sendStatus(204)
+      res.sendStatus(200)
     } catch (error) {
       // if an error occurs, pass it to the handler
 
@@ -147,7 +147,7 @@ router.patch(
       // pass the result of Mongoose's `.update` to the next `.then`
       await cell.updateOne(req.body.form)
       // if that succeeded, return 204 and no JSON
-      res.sendStatus(204)
+      res.sendStatus(200)
     } catch (error) {
       // if an error occurs, pass it to the handler
       next(error)
@@ -164,7 +164,7 @@ router.delete('/column/:id', requireToken, async (req, res, next) => {
     // delete the example ONLY IF the above didn't throw
     await column.deleteOne()
     // send back 204 and no content if the deletion succeeded
-    res.sendStatus(204)
+    res.sendStatus(200)
   } catch (error) {
     // if an error occurs, pass it to the handler
     next(error)
@@ -180,7 +180,7 @@ router.delete('/cell/:id', requireToken, async (req, res, next) => {
     // delete the example ONLY IF the above didn't throw
     cell.deleteOne()
     // send back 204 and no content if the deletion succeeded
-    res.sendStatus(204)
+    res.sendStatus(200)
   } catch (error) {
     // if an error occurs, pass it to the handler
     next(error)
